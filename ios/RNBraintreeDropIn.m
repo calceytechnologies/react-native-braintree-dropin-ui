@@ -1,9 +1,6 @@
 #import "RNBraintreeDropIn.h"
 #import <React/RCTUtils.h>
 #import "BTThreeDSecureRequest.h"
-#import "BTCard.h"
-#import "BTCardClient.h"
-#import "BTAPIClient.h"
 
 @implementation RNBraintreeDropIn
 
@@ -12,6 +9,54 @@
     return dispatch_get_main_queue();
 }
 RCT_EXPORT_MODULE(RNBraintreeDropIn)
+
+RCT_EXPORT_METHOD(paypalLogin:(NSDictionary*)options resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+{
+    self.resolve = resolve;
+    self.reject = reject;
+
+    NSString* clientToken = options[@"clientToken"];
+    if (!clientToken) {
+        reject(@"NO_CLIENT_TOKEN", @"You must provide a client token", nil);
+        return;
+    }
+    
+    
+    BTAPIClient *apiClient = [[BTAPIClient alloc] initWithAuthorization:clientToken];
+    self.dataCollector = [[BTDataCollector alloc] initWithAPIClient:apiClient];
+    [self.dataCollector collectCardFraudData:^(NSString * _Nonnull deviceDataCollector) {
+        // Save deviceData
+        self.deviceDataCollector = deviceDataCollector;
+    }];
+    
+    self.braintreeClient = apiClient;
+    BTPayPalDriver *payPalDriver = [[BTPayPalDriver alloc] initWithAPIClient:self.braintreeClient];
+    payPalDriver.viewControllerPresentingDelegate = self;
+//    payPalDriver.appSwitchDelegate = self; // Optional
+    
+    BTPayPalRequest *checkout = [[BTPayPalRequest alloc] init];
+    checkout.billingAgreementDescription = @"Your agreement description";
+    [payPalDriver requestBillingAgreement:checkout completion:^(BTPayPalAccountNonce * _Nullable tokenizedPayPalCheckout, NSError * _Nullable error) {
+        if (error) {
+            reject(error.localizedDescription, error.localizedDescription, error);
+        } else if (tokenizedPayPalCheckout) {
+            [[self class] resolvePayPalLogin:tokenizedPayPalCheckout deviceData:self.deviceDataCollector resolver:resolve];
+        } else {
+            reject(@"USER_CANCELLATION", @"The user cancelled", nil);
+        }
+    }];
+}
+
++ (void)resolvePayPalLogin:(BTPayPalAccountNonce* _Nullable)tokenizedPayPalCheckout deviceData:(NSString * _Nonnull)deviceDataCollector resolver:(RCTPromiseResolveBlock _Nonnull)resolve {
+    NSMutableDictionary* result = [NSMutableDictionary new];
+    [result setObject:tokenizedPayPalCheckout.nonce forKey:@"nonce"];
+    [result setObject:@"PayPal" forKey:@"type"];
+    [result setObject:[NSString stringWithFormat: @"%@ %@", @"", tokenizedPayPalCheckout.type] forKey:@"description"];
+    [result setObject:[NSNumber numberWithBool:false] forKey:@"isDefault"];
+    [result setObject:deviceDataCollector forKey:@"deviceData"];
+
+    resolve(result);
+}
 
 RCT_EXPORT_METHOD(show:(NSDictionary*)options resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
 {
@@ -207,27 +252,6 @@ RCT_EXPORT_METHOD(show:(NSDictionary*)options resolver:(RCTPromiseResolveBlock)r
     }
 
     return modalRoot;
-}
-
-
-RCT_EXPORT_METHOD(tokanize:(NSString *)authorization options:(NSDictionary*)options resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
-{
-    BTAPIClient *braintreeClient = [[BTAPIClient alloc] initWithAuthorization:authorization];
-    BTCardClient *cardClient = [[BTCardClient alloc] initWithAPIClient:braintreeClient];
-    BTCard *card = [[BTCard alloc] initWithParameters:options];
-    [cardClient tokenizeCard:card
-                  completion:^(BTCardNonce *tokenizedCard, NSError *error) {
-        // Communicate the tokenizedCard.nonce to your server, or handle error
-        if (!error) {
-            NSMutableDictionary* result = [NSMutableDictionary new];
-            [result setObject:tokenizedCard.nonce forKey:@"nonce"];
-            resolve(result);
-        } else {
-//            NSMutableDictionary* result = [NSMutableDictionary new];
-//            [result setObject:error forKey:@"error"];
-            reject(@"0", @"error", error);
-        }
-    }];
 }
 
 @end
