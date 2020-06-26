@@ -92,7 +92,6 @@ public class RNBraintreeDropInModule extends ReactContextBaseJavaModule {
     }
   }
 
-  @ReactMethod
   public void paypalLogin(final ReadableMap options, final Promise promise) {
     if (!options.hasKey("clientToken")) {
       promise.reject("NO_CLIENT_TOKEN", "You must provide a client token");
@@ -103,6 +102,11 @@ public class RNBraintreeDropInModule extends ReactContextBaseJavaModule {
     PayPalRequest request = new PayPalRequest().billingAgreementDescription("Your agreement description");
     mPromise = promise;
     PayPal.requestBillingAgreement(mBraintreeFragment, request);
+  }
+
+  @ReactMethod
+  public void tokenize(String authorization, final ReadableMap parameters, final Promise promise) {
+    setup(authorization, promise);
   }
 
   @ReactMethod

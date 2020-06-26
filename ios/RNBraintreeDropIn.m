@@ -254,4 +254,25 @@ RCT_EXPORT_METHOD(show:(NSDictionary*)options resolver:(RCTPromiseResolveBlock)r
     return modalRoot;
 }
 
+
+RCT_EXPORT_METHOD(tokenize:(NSString *)authorization options:(NSDictionary*)options resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+{
+    BTAPIClient *braintreeClient = [[BTAPIClient alloc] initWithAuthorization:authorization];
+    BTCardClient *cardClient = [[BTCardClient alloc] initWithAPIClient:braintreeClient];
+    BTCard *card = [[BTCard alloc] initWithParameters:options];
+    [cardClient tokenizeCard:card
+                  completion:^(BTCardNonce *tokenizedCard, NSError *error) {
+        // Communicate the tokenizedCard.nonce to your server, or handle error
+        if (!error) {
+            NSMutableDictionary* result = [NSMutableDictionary new];
+            [result setObject:tokenizedCard.nonce forKey:@"nonce"];
+            resolve(result);
+        } else {
+//            NSMutableDictionary* result = [NSMutableDictionary new];
+//            [result setObject:error forKey:@"error"];
+            reject(@"0", @"error", error);
+        }
+    }];
+}
+
 @end
