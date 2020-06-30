@@ -1,6 +1,6 @@
 #import "RNScanCard.h"
 #import <React/RCTUtils.h>
-#import "RNBraintreeDropIn-Swift.h"
+#import <RNBraintreeDropIn-Swift.h>
 
 @implementation RNScanCard
 
