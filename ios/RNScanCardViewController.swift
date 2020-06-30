@@ -9,12 +9,11 @@
 import UIKit
 import PayCardsRecognizer
 
-@objc class RnScanCardViewController: UIViewController, PayCardsRecognizerPlatformDelegate {
+class RnScanCardViewController: UIViewController, PayCardsRecognizerPlatformDelegate {
 
     var promiseResolve: RCTPromiseResolveBlock!
     var promiseReject: RCTPromiseRejectBlock!
   
-   @objc
    public required convenience init(resolve: @escaping RCTPromiseResolveBlock, reject:  @escaping RCTPromiseRejectBlock) {
       self.init()
       promiseResolve = resolve
