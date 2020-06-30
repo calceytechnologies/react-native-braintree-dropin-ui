@@ -310,8 +310,8 @@ RCT_EXPORT_METHOD(tokenize:(NSString *)authorization options:(NSDictionary*)opti
     if (options[@"countryCodeAlpha3"])
         card.countryCodeAlpha3 = options[@"countryCodeAlpha3"];
     
-    if (options[@"countryCodeNumeric"])
-        card.countryCodeNumeric = options[@"countryCodeNumeric"];
+    if (options[@"countryCode"])
+        card.countryCodeAlpha3 = options[@"countryCode"];
     
     if (authorization == nil || braintreeClient == nil || cardClient == nil || card == nil) {
         NSError * err = [NSError errorWithDomain:@"BraintreeAuth" code:01 userInfo:@{@"message": @"Auth not valid"}];
@@ -324,7 +324,9 @@ RCT_EXPORT_METHOD(tokenize:(NSString *)authorization options:(NSDictionary*)opti
                 [result setObject:tokenizedCard.nonce forKey:@"nonce"];
                 [result setObject:[NSString stringWithFormat: @"%@ %@", @"", tokenizedCard.type] forKey:@"description"];
                 [result setObject:[NSNumber numberWithBool:false] forKey:@"isDefault"];
-                [result setObject:self.deviceDataCollector forKey:@"deviceData"];
+                if (self.deviceDataCollector) {
+                    [result setObject:self.deviceDataCollector forKey:@"deviceData"];
+                }
                 resolve(result);
             } else {
                 reject(@"0", @"Card details not valid", error);
