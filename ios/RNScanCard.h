@@ -20,7 +20,5 @@
 //#import <RNBraintreeDropIn-Swift.h>
 //#endif
 
-
-
 @interface RNScanCard : NSObject <RCTBridgeModule>
 @end
