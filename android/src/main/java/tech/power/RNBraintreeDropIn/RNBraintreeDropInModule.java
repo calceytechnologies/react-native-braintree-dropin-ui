@@ -76,7 +76,7 @@ public class RNBraintreeDropInModule extends ReactContextBaseJavaModule {
       cardBuilder.cvv(parameters.getString("cvv"));
 
     // In order to keep compatibility with iOS implementation, do not accept
-    // expirationMonth and exporationYear,
+    // expirationMonth and expirationYear,
     // accept rather expirationDate (which is combination of
     // expirationMonth/expirationYear)
     if (parameters.hasKey("expirationDate"))
@@ -136,7 +136,7 @@ public class RNBraintreeDropInModule extends ReactContextBaseJavaModule {
       this.mBraintreeFragment.addListener(new BraintreeCancelListener() {
         @Override
         public void onCancel(int requestCode) {
-          mPromise.reject("USER_CANCELLATION", "USER_CANCELLATION");
+          mPromise.reject("USER_CANCELLATION", "The process was cancelled by the user");
         }
       });
       this.mBraintreeFragment.addListener(new PaymentMethodNonceCreatedListener() {
