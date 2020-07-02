@@ -173,30 +173,29 @@ public class RNBraintreeDropInModule extends ReactContextBaseJavaModule {
             ErrorWithResponse errorWithResponse = (ErrorWithResponse) error;
             BraintreeError cardErrors = errorWithResponse.errorFor("creditCard");
             if (cardErrors != null) {
-              Gson gson = new Gson();
-              final Map<String, String> errors = new HashMap<>();
+              WritableMap errors = Arguments.createMap();
               BraintreeError numberError = cardErrors.errorFor("number");
               BraintreeError cvvError = cardErrors.errorFor("cvv");
               BraintreeError expirationDateError = cardErrors.errorFor("expirationDate");
               BraintreeError postalCode = cardErrors.errorFor("postalCode");
 
               if (numberError != null) {
-                errors.put("card_number", numberError.getMessage());
+                errors.putString("number", numberError.getMessage());
               }
 
               if (cvvError != null) {
-                errors.put("cvv", cvvError.getMessage());
+                errors.putString("cvv", cvvError.getMessage());
               }
 
               if (expirationDateError != null) {
-                errors.put("expiration_date", expirationDateError.getMessage());
+                errors.putString("expirationMonth", expirationDateError.getMessage());
               }
 
               if (postalCode != null) {
-                errors.put("postal_code", postalCode.getMessage());
+                errors.putString("postalCode", postalCode.getMessage());
               }
 
-              mPromise.reject("0", gson.toJson(errors));
+              mPromise.reject("0", errors);
             } else {
               mPromise.reject("0", errorWithResponse.getErrorResponse());
             }
@@ -219,7 +218,7 @@ public class RNBraintreeDropInModule extends ReactContextBaseJavaModule {
   }
 
   private void resolveCard (PaymentMethodNonce paymentMethodNonce) {
-    Gson gson = new Gson();
+    WritableMap jsResult = Arguments.createMap();
     final Map<String, String> data = new HashMap<>();
     if (threeDSecureOptions != null && paymentMethodNonce instanceof CardNonce) {
       CardNonce cardNonce = (CardNonce) paymentMethodNonce;
@@ -228,12 +227,18 @@ public class RNBraintreeDropInModule extends ReactContextBaseJavaModule {
       } else if (!cardNonce.getThreeDSecureInfo().isLiabilityShifted()) {
         mPromise.reject("2", "3DSECURE_LIABILITY_NOT_SHIFTED");
       } else {
-        data.put("nonce", paymentMethodNonce.getNonce());
-        mPromise.resolve(gson.toJson(data));
+          jsResult.putString("nonce", paymentMethodNonce.getNonce());
+          jsResult.putString("type", paymentMethodNonce.getTypeLabel());
+          jsResult.putString("description", paymentMethodNonce.getDescription());
+          jsResult.putBoolean("isDefault", paymentMethodNonce.isDefault());
+          mPromise.resolve(jsResult);
       }
     } else {
-      data.put("nonce", paymentMethodNonce.getNonce());
-      mPromise.resolve(gson.toJson(data));
+      jsResult.putString("nonce", paymentMethodNonce.getNonce());
+      jsResult.putString("type", paymentMethodNonce.getTypeLabel());
+      jsResult.putString("description", paymentMethodNonce.getDescription());
+      jsResult.putBoolean("isDefault", paymentMethodNonce.isDefault());
+      mPromise.resolve(jsResult);
     }
   }
 
