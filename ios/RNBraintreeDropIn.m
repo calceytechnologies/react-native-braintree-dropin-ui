@@ -20,7 +20,6 @@ RCT_EXPORT_METHOD(isApplePayAvailable: (RCTPromiseResolveBlock)resolve rejecter:
 
     NSNumber *result=[NSNumber numberWithBool:NO];
 
-
     if ([PKPaymentAuthorizationViewController canMakePaymentsUsingNetworks:@[PKPaymentNetworkVisa, PKPaymentNetworkMasterCard, PKPaymentNetworkAmex, PKPaymentNetworkDiscover]]) {
         result=[NSNumber numberWithBool:YES];
         resolve(result);
