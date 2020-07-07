@@ -13,6 +13,24 @@
 }
 RCT_EXPORT_MODULE(RNBraintreeDropIn)
 
+RCT_EXPORT_METHOD(isApplePayAvailable: (RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject) {
+    
+    self.resolve = resolve;
+    self.reject = reject;
+
+    NSNumber *result=[NSNumber numberWithBool:NO];
+
+
+    if ([PKPaymentAuthorizationViewController canMakePaymentsUsingNetworks:@[PKPaymentNetworkVisa, PKPaymentNetworkMasterCard, PKPaymentNetworkAmex, PKPaymentNetworkDiscover]]) {
+        result=[NSNumber numberWithBool:YES];
+        resolve(result);
+        
+    } else {
+        resolve(result);
+    }
+    
+}
+
 RCT_EXPORT_METHOD(paypalLogin:(NSDictionary*)options resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
 {
     self.resolve = resolve;
