@@ -13,6 +13,23 @@
 }
 RCT_EXPORT_MODULE(RNBraintreeDropIn)
 
+RCT_EXPORT_METHOD(isApplePayAvailable: (RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject) {
+    
+    self.resolve = resolve;
+    self.reject = reject;
+
+    NSNumber *result=[NSNumber numberWithBool:NO];
+
+    if ([PKPaymentAuthorizationViewController canMakePaymentsUsingNetworks:@[PKPaymentNetworkVisa, PKPaymentNetworkMasterCard, PKPaymentNetworkAmex, PKPaymentNetworkDiscover]]) {
+        result=[NSNumber numberWithBool:YES];
+        resolve(result);
+        
+    } else {
+        resolve(result);
+    }
+    
+}
+
 RCT_EXPORT_METHOD(paypalLogin:(NSDictionary*)options resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
 {
     self.resolve = resolve;
@@ -45,7 +62,7 @@ RCT_EXPORT_METHOD(paypalLogin:(NSDictionary*)options resolver:(RCTPromiseResolve
         } else if (tokenizedPayPalCheckout) {
             [[self class] resolvePayPalLogin:tokenizedPayPalCheckout deviceData:self.deviceDataCollector resolver:resolve];
         } else {
-            reject(@"USER_CANCELLATION", @"The user cancelled", nil);
+            reject(@"USER_CANCELLATION", @"The process was cancelled by the user", nil);
         }
     }];
 }
@@ -157,7 +174,7 @@ RCT_EXPORT_METHOD(show:(NSDictionary*)options resolver:(RCTPromiseResolveBlock)r
             if (error != nil) {
                 reject(error.localizedDescription, error.localizedDescription, error);
             } else if (result.cancelled) {
-                reject(@"USER_CANCELLATION", @"The user cancelled", nil);
+                reject(@"USER_CANCELLATION", @"The process was cancelled by the user", nil);
             } else {
                 if (threeDSecureOptions && [result.paymentMethod isKindOfClass:[BTCardNonce class]]) {
                     BTCardNonce *cardNonce = (BTCardNonce *)result.paymentMethod;
@@ -223,7 +240,7 @@ RCT_EXPORT_METHOD(show:(NSDictionary*)options resolver:(RCTPromiseResolveBlock)r
 - (void)paymentAuthorizationViewControllerDidFinish:(PKPaymentAuthorizationViewController *)controller{
     [self.reactRoot dismissViewControllerAnimated:YES completion:nil];
     if(self.applePayAuthorized == NO){
-        self.reject(@"USER_CANCELLATION", @"The user cancelled", nil);
+        self.reject(@"USER_CANCELLATION", @"The process was cancelled by the user", nil);
     }
 }
 
