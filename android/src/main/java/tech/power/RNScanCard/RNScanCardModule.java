@@ -12,8 +12,8 @@ import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.WritableMap;
 
-import cards.pay.paycardsrecognizer.sdk.Card;
-import cards.pay.paycardsrecognizer.sdk.ScanCardIntent;
+import payCards_Android.sdk.Card;
+import payCards_Android.sdk.ScanCardIntent;
 
 public class RNScanCardModule extends ReactContextBaseJavaModule {
   private Promise mPromise;
