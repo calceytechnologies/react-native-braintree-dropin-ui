@@ -32,6 +32,12 @@ android {
     }
 }
 
+sourceControl {
+    gitRepository("https://github.com/thanushanCalcey/PayCards_Android") {
+        producesModule("org.cards.pay:paycardsrecognizer")
+    }
+}
+
 repositories {
     mavenCentral()
     google()
@@ -44,7 +50,7 @@ dependencies {
     implementation 'com.braintreepayments.api:drop-in:4.+'
     implementation 'com.facebook.react:react-native:+'
     implementation 'com.google.code.gson:gson:2.8.5'
-    implementation 'cards.pay:paycardsrecognizer:1.1.0'
+    implementation 'org.cards.pay:paycardsrecognizer'
 }
 
 // https://developers.braintreepayments.com/guides/3d-secure/migration/android/v3
