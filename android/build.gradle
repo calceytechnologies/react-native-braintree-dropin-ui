@@ -32,12 +32,6 @@ android {
     }
 }
 
-sourceControl {
-    gitRepository("https://github.com/thanushanCalcey/PayCards_Android") {
-        producesModule("org.cards.pay:paycardsrecognizer")
-    }
-}
-
 repositories {
     mavenCentral()
     google()
