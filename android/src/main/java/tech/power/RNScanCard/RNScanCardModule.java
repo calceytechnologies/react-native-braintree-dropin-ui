@@ -25,8 +25,6 @@ public class RNScanCardModule extends ReactContextBaseJavaModule {
     reactContext.addActivityEventListener(mActivityListener);
   }
 
-
-
   @ReactMethod
   public void show(final Promise promise) {
     Activity currentActivity = getCurrentActivity();

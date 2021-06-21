@@ -1,4 +1,13 @@
 buildscript {
+    ext {
+        buildToolsVersion = "28.0.3"
+        minSdkVersion = 21
+        compileSdkVersion = 28
+        targetSdkVersion = 27
+        androidXCore = "1.0.2"
+        supportLibVersion = '28.0.0'
+    }
+
     repositories {
         jcenter()
         google()
@@ -6,6 +15,13 @@ buildscript {
 
     dependencies {
         classpath 'com.android.tools.build:gradle:3.2.1'
+    }
+}
+
+allprojects {
+    repositories {
+        google()
+        jcenter()
     }
 }
 
