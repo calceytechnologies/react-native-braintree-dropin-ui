@@ -1,7 +1,7 @@
 import { NativeModules } from 'react-native';
 
-const { RNBraintreeDropIn } = NativeModules;
+// const { RNBraintreeDropIn } = NativeModules;
 
-// const { RNBraintreeDropIn, RNScanCard } = NativeModules;
+const { RNBraintreeDropIn, RNScanCard } = NativeModules;
 
 export default {RNBraintreeDropIn};
