@@ -15,7 +15,7 @@ Pod::Spec.new do |s|
   s.requires_arc = true
   s.dependency    'React'
   s.swift_version = '5.0'
-#   s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES' }
+  s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES' }
   s.dependency    'Braintree', '4.34.0'
   s.dependency    'BraintreeDropIn'
   s.dependency    'Braintree/DataCollector'
