@@ -44,7 +44,7 @@ public class RNScanCardModule extends ReactContextBaseJavaModule {
     public void onActivityResult(Activity activity, int requestCode, int resultCode, Intent data) {
       super.onActivityResult(requestCode, resultCode, data);
 
-      if (requestCode != REQUEST_CODE_SCAN_CARD || mPromise == null) {
+      if (requestCode != REQUEST_CODE_SCAN_CARD && mPromise != null) {
         mPromise.reject("WRONG_REQUEST_CODE", "Wrong request code");
       }
 
