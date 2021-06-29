@@ -16,8 +16,8 @@ Pod::Spec.new do |s|
   s.dependency    'React'
   s.swift_version = '5.0'
   s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES' }
-  s.dependency    'Braintree', '4.34.0'
-  s.dependency    'BraintreeDropIn'
+  s.dependency    'Braintree', '4.34.0', :modular_headers => true
+  s.dependency    'BraintreeDropIn', :modular_headers => true
   s.dependency    'Braintree/DataCollector'
   s.dependency    'Braintree/Apple-Pay'
   s.dependency    'Braintree/Venmo'
