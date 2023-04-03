@@ -75,6 +75,8 @@ rootProject.allprojects {
         }
         maven {
             url "http://pay.cards/maven"
+            // fixed https://stackoverflow.com/questions/68585885/allow-insecure-protocols-android-gradle
+            allowInsecureProtocol = true;
         }
     }
 }
