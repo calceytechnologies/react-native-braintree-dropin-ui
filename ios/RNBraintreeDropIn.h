@@ -14,7 +14,7 @@
 #import "BraintreePayPal.h"
 #import "BraintreeApplePay.h"
 
-@interface RNBraintreeDropIn : NSObject <RCTBridgeModule>
+@interface RNBraintreeDropIn : NSObject <RCTBridgeModule, PKPaymentAuthorizationViewControllerDelegate>
 
 @property(nonatomic, strong) UIViewController *_Nonnull reactRoot;
 
@@ -34,6 +34,8 @@
 @property(nonatomic) RCTPromiseResolveBlock _Nonnull resolve;
 
 @property(nonatomic) RCTPromiseRejectBlock _Nonnull reject;
+
+@property (nonatomic, assign) BOOL applePayAuthorized;
 
 @property(nonatomic, assign) BOOL *_Nonnull applePayAuthorized;
 

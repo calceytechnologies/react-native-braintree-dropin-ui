@@ -26,6 +26,8 @@ import com.braintreepayments.api.models.PayPalRequest;
 import java.util.HashMap;
 import java.util.Map;
 
+import java.util.Objects;
+
 public class RNBraintreeDropInModule extends ReactContextBaseJavaModule {
 
   private Promise mPromise;
@@ -209,12 +211,30 @@ public class RNBraintreeDropInModule extends ReactContextBaseJavaModule {
 
   private void resolvePaypal(PaymentMethodNonce paymentMethodNonce) {
     WritableMap jsResult = Arguments.createMap();
-    jsResult.putString("nonce", paymentMethodNonce.getNonce());
-    jsResult.putString("type", paymentMethodNonce.getTypeLabel());
-    jsResult.putString("description", paymentMethodNonce.getDescription());
+
+    if (paymentMethodNonce == null) {
+      promise.resolve(null);
+      return;
+    }
+
+    Activity currentActivity = getCurrentActivity();
+    if (currentActivity == null) {
+      promise.reject("NO_ACTIVITY", "There is no current activity");
+      return;
+    }
+
+    DropInPaymentMethod dropInPaymentMethod = dropInResult.getPaymentMethodType();
+    if (dropInPaymentMethod == null) {
+      promise.reject("NO_PAYMENT_METHOD", "There is no payment method");
+      return;
+    }
+
+    jsResult.putString("nonce", paymentMethodNonce.getString());
+    jsResult.putString("type", currentActivity.getString(dropInPaymentMethod.getLocalizedName()));
+    jsResult.putString("description", dropInResult.getPaymentDescription());
     jsResult.putBoolean("isDefault", paymentMethodNonce.isDefault());
 
-    mPromise.resolve(jsResult);
+    promise.resolve(jsResult);
   }
 
   private void resolveCard (PaymentMethodNonce paymentMethodNonce) {
