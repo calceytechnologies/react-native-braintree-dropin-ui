@@ -37,8 +37,6 @@
 
 @property (nonatomic, assign) BOOL applePayAuthorized;
 
-@property(nonatomic, assign) BOOL *_Nonnull applePayAuthorized;
-
 + (void)resolvePayment:(BTDropInResult *_Nullable)result deviceData:(NSString *_Nonnull)deviceDataCollector resolver:(RCTPromiseResolveBlock _Nonnull)resolve;
 
 + (void)resolvePayPalLogin:(BTPayPalAccountNonce *_Nullable)result deviceData:(NSString *_Nonnull)deviceDataCollector resolver:(RCTPromiseResolveBlock _Nonnull)resolve;

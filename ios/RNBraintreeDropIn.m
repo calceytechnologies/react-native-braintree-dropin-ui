@@ -44,27 +44,13 @@ RCT_EXPORT_METHOD(paypalLogin:(NSDictionary*)options resolver:(RCTPromiseResolve
     
     BTAPIClient *apiClient = [[BTAPIClient alloc] initWithAuthorization:clientToken];
     self.dataCollector = [[BTDataCollector alloc] initWithAPIClient:apiClient];
-    [self.dataCollector collectCardFraudData:^(NSString * _Nonnull deviceDataCollector) {
-        // Save deviceData
-        self.deviceDataCollector = deviceDataCollector;
-    }];
     
     self.braintreeClient = apiClient;
     BTPayPalDriver *payPalDriver = [[BTPayPalDriver alloc] initWithAPIClient:self.braintreeClient];
-    payPalDriver.viewControllerPresentingDelegate = self;
 //    payPalDriver.appSwitchDelegate = self; // Optional
     
     BTPayPalRequest *checkout = [[BTPayPalRequest alloc] init];
     checkout.billingAgreementDescription = @"Your agreement description";
-    [payPalDriver requestBillingAgreement:checkout completion:^(BTPayPalAccountNonce * _Nullable tokenizedPayPalCheckout, NSError * _Nullable error) {
-        if (error) {
-            reject(error.localizedDescription, error.localizedDescription, error);
-        } else if (tokenizedPayPalCheckout) {
-            [[self class] resolvePayPalLogin:tokenizedPayPalCheckout deviceData:self.deviceDataCollector resolver:resolve];
-        } else {
-            reject(@"USER_CANCELLATION", @"The process was cancelled by the user", nil);
-        }
-    }];
 }
 
 + (void)resolvePayPalLogin:(BTPayPalAccountNonce* _Nullable)tokenizedPayPalCheckout deviceData:(NSString * _Nonnull)deviceDataCollector resolver:(RCTPromiseResolveBlock _Nonnull)resolve {
@@ -343,80 +329,6 @@ RCT_EXPORT_METHOD(tokenizeCard:(NSString*)clientToken
     }
 
     return modalRoot;
-}
-
-
-RCT_EXPORT_METHOD(tokenize:(NSString *)authorization options:(NSDictionary*)options resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
-{
-    BTAPIClient *braintreeClient = [[BTAPIClient alloc] initWithAuthorization:authorization];
-    BTCardClient *cardClient = [[BTCardClient alloc] initWithAPIClient:braintreeClient];
-    BTCard *card = [[BTCard alloc] initWithNumber:options[@"number"] expirationMonth:options[@"expirationMonth"] expirationYear:options[@"expirationYear"] cvv:options[@"cvv"]];
-    
-    if (options[@"cardholderName"])
-        card.cardholderName = options[@"cardholderName"];
-
-    if (options[@"firstName"])
-        card.firstName = options[@"firstName"];
-
-    if (options[@"lastName"])
-        card.lastName = options[@"lastName"];
-
-    if (options[@"company"])
-        card.company = options[@"company"];
-    
-    if (options[@"locality"])
-        card.locality = options[@"locality"];
-
-    if (options[@"postalCode"])
-        card.postalCode = options[@"postalCode"];
-
-    if (options[@"region"])
-        card.region = options[@"region"];
-
-    if (options[@"streetAddress"])
-        card.streetAddress = options[@"streetAddress"];
-
-    if (options[@"extendedAddress"])
-        card.extendedAddress = options[@"extendedAddress"];
-
-    if (options[@"shouldValidate"])
-        card.shouldValidate = options[@"shouldValidate"];
-    
-    if (options[@"merchantAccountId"])
-        card.merchantAccountId = options[@"merchantAccountId"];
-    
-    if (options[@"countryName"])
-        card.countryName = options[@"countryName"];
-    
-    if (options[@"countryCodeAlpha2"])
-        card.countryCodeAlpha2 = options[@"countryCodeAlpha2"];
-    
-    if (options[@"countryCodeAlpha3"])
-        card.countryCodeAlpha3 = options[@"countryCodeAlpha3"];
-    
-    if (options[@"countryCode"])
-        card.countryCodeAlpha3 = options[@"countryCode"];
-    
-    if (authorization == nil || braintreeClient == nil || cardClient == nil || card == nil) {
-        NSError * err = [NSError errorWithDomain:@"BraintreeAuth" code:01 userInfo:@{@"message": @"Auth not valid"}];
-        reject(@"01", @"Auth not valid", err);
-    } else {
-        [cardClient tokenizeCard:card
-                      completion:^(BTCardNonce *tokenizedCard, NSError *error) {
-            if (!error) {
-                NSMutableDictionary* result = [NSMutableDictionary new];
-                [result setObject:tokenizedCard.nonce forKey:@"nonce"];
-                [result setObject:[NSString stringWithFormat: @"%@ %@", @"", tokenizedCard.type] forKey:@"description"];
-                [result setObject:[NSNumber numberWithBool:false] forKey:@"isDefault"];
-                if (self.deviceDataCollector) {
-                    [result setObject:self.deviceDataCollector forKey:@"deviceData"];
-                }
-                resolve(result);
-            } else {
-                reject(@"0", @"Card details not valid", error);
-            }
-        }];
-    }
 }
 
 @end

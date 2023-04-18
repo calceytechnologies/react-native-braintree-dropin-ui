@@ -19,4 +19,5 @@ Pod::Spec.new do |s|
   s.dependency    'Braintree/DataCollector', '5.20.1'
   s.dependency    'Braintree/ApplePay', '5.20.1'
   s.dependency    'Braintree/Venmo', '5.20.1'
+  s.dependency    'PayCardsRecognizer', '1.1.7'
 end
