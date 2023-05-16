@@ -1,16 +1,18 @@
 package tech.power.RNBraintreeDropIn;
 
-import androidx.appcompat.app.AppCompatActivity;
+import android.app.Activity;
 
-import com.braintreepayments.api.BraintreeFragment;
+import androidx.annotation.NonNull;
+import androidx.fragment.app.FragmentActivity;
+
+import com.braintreepayments.api.BraintreeClient;
 import com.braintreepayments.api.Card;
-import com.braintreepayments.api.exceptions.BraintreeError;
-import com.braintreepayments.api.exceptions.ErrorWithResponse;
-import com.braintreepayments.api.interfaces.BraintreeCancelListener;
-import com.braintreepayments.api.interfaces.BraintreeErrorListener;
-import com.braintreepayments.api.interfaces.PaymentMethodNonceCreatedListener;
-import com.braintreepayments.api.models.CardBuilder;
-import com.braintreepayments.api.models.PayPalAccountNonce;
+import com.braintreepayments.api.CardClient;
+import com.braintreepayments.api.DropInClient;
+import com.braintreepayments.api.DropInListener;
+import com.braintreepayments.api.DropInPaymentMethod;
+import com.braintreepayments.api.ThreeDSecureRequest;
+import com.braintreepayments.api.UserCanceledException;
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
@@ -18,198 +20,215 @@ import com.facebook.react.bridge.ReadableMap;
 import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.bridge.Promise;
-import com.braintreepayments.api.models.PaymentMethodNonce;
-import com.braintreepayments.api.models.CardNonce;
-import com.google.gson.Gson;
-import com.braintreepayments.api.PayPal;
-import com.braintreepayments.api.models.PayPalRequest;
-import java.util.HashMap;
-import java.util.Map;
+import com.braintreepayments.api.DropInRequest;
+import com.braintreepayments.api.DropInResult;
+import com.braintreepayments.api.PaymentMethodNonce;
+import com.braintreepayments.api.CardNonce;
+import com.braintreepayments.api.ThreeDSecureInfo;
+import com.braintreepayments.api.GooglePayRequest;
+import com.google.android.gms.wallet.TransactionInfo;
+import com.google.android.gms.wallet.WalletConstants;
 
 import java.util.Objects;
 
 public class RNBraintreeDropInModule extends ReactContextBaseJavaModule {
-
-  private Promise mPromise;
   private boolean isVerifyingThreeDSecure = false;
-  private BraintreeFragment mBraintreeFragment;
-  private ReadableMap threeDSecureOptions;
-  private String token;
+  private static DropInClient dropInClient = null;
+  private static String clientToken = null;
 
-  RNBraintreeDropInModule(ReactApplicationContext reactContext) {
+  public static void initDropInClient(FragmentActivity activity) {
+    dropInClient = new DropInClient(activity, callback -> {
+      if (clientToken != null) {
+        callback.onSuccess(clientToken);
+      } else {
+        callback.onFailure(new Exception("Client token is null"));
+      }
+    });
+  }
+
+  public RNBraintreeDropInModule(ReactApplicationContext reactContext) {
     super(reactContext);
   }
 
-
   @ReactMethod
-  public void paypalLogin(final ReadableMap options, Promise promise) {
-    this.mPromise = promise;
+  public void show(final ReadableMap options, final Promise promise) {
+    isVerifyingThreeDSecure = false;
+
     if (!options.hasKey("clientToken")) {
-      mPromise.reject("NO_CLIENT_TOKEN", "You must provide a client token");
+      promise.reject("NO_CLIENT_TOKEN", "You must provide a client token");
       return;
     }
-    this.setToken(options.getString("clientToken"));
-    createNewFragmentInstance();
 
-    this.mBraintreeFragment.addListener(new BraintreeErrorListener() {
+    FragmentActivity currentActivity = (FragmentActivity) getCurrentActivity();
+    if (currentActivity == null) {
+      promise.reject("NO_ACTIVITY", "There is no current activity");
+      return;
+    }
+
+    DropInRequest dropInRequest = new DropInRequest();
+
+    if(options.hasKey("vaultManager")) {
+      dropInRequest.setVaultManagerEnabled(options.getBoolean("vaultManager"));
+    }
+
+    if(options.hasKey("googlePay") && options.getBoolean("googlePay")){
+      GooglePayRequest googlePayRequest = new GooglePayRequest();
+      googlePayRequest.setTransactionInfo(TransactionInfo.newBuilder()
+          .setTotalPrice(Objects.requireNonNull(options.getString("orderTotal")))
+          .setTotalPriceStatus(WalletConstants.TOTAL_PRICE_STATUS_FINAL)
+          .setCurrencyCode(Objects.requireNonNull(options.getString("currencyCode")))
+          .build());
+      googlePayRequest.setBillingAddressRequired(true);
+      googlePayRequest.setGoogleMerchantId(options.getString("googlePayMerchantId"));
+
+      dropInRequest.setGooglePayDisabled(false);
+      dropInRequest.setGooglePayRequest(googlePayRequest);
+    }else{
+        dropInRequest.setGooglePayDisabled(true);
+    }
+
+    if(options.hasKey("cardDisabled")) {
+      dropInRequest.setCardDisabled(true);
+    }
+
+    if (options.hasKey("threeDSecure")) {
+      final ReadableMap threeDSecureOptions = options.getMap("threeDSecure");
+      if (threeDSecureOptions == null || !threeDSecureOptions.hasKey("amount")) {
+        promise.reject("NO_3DS_AMOUNT", "You must provide an amount for 3D Secure");
+        return;
+      }
+
+      isVerifyingThreeDSecure = true;
+
+      ThreeDSecureRequest threeDSecureRequest = new ThreeDSecureRequest();
+      threeDSecureRequest.setAmount(threeDSecureOptions.getString("amount"));
+
+      dropInRequest.setThreeDSecureRequest(threeDSecureRequest);
+    }
+
+    dropInRequest.setPayPalDisabled(!options.hasKey("payPal") || !options.getBoolean("payPal"));
+
+    clientToken = options.getString("clientToken");
+
+    if (dropInClient == null) {
+      promise.reject(
+        "DROP_IN_CLIENT_UNINITIALIZED",
+        "Did you forget to call RNBraintreeDropInModule.initDropInClient(this) in MainActivity.onCreate?"
+      );
+      return;
+    }
+    dropInClient.setListener(new DropInListener() {
       @Override
-      public void onError(Exception error) {
-        if (error instanceof ErrorWithResponse) {
-          ErrorWithResponse errorWithResponse = (ErrorWithResponse) error;
-          mPromise.reject("ERROR", errorWithResponse.getMessage());
+      public void onDropInSuccess(@NonNull DropInResult dropInResult) {
+        PaymentMethodNonce paymentMethodNonce = dropInResult.getPaymentMethodNonce();
+
+        if (isVerifyingThreeDSecure && paymentMethodNonce instanceof CardNonce) {
+          CardNonce cardNonce = (CardNonce) paymentMethodNonce;
+          ThreeDSecureInfo threeDSecureInfo = cardNonce.getThreeDSecureInfo();
+          if (!threeDSecureInfo.isLiabilityShiftPossible()) {
+            promise.reject("3DSECURE_NOT_ABLE_TO_SHIFT_LIABILITY", "3D Secure liability cannot be shifted");
+          } else if (!threeDSecureInfo.isLiabilityShifted()) {
+            promise.reject("3DSECURE_LIABILITY_NOT_SHIFTED", "3D Secure liability was not shifted");
+          } else {
+            resolvePayment(dropInResult, promise);
+          }
+        } else {
+          resolvePayment(dropInResult, promise);
+        }
+      }
+
+      @Override
+      public void onDropInFailure(@NonNull Exception exception) {
+        if (exception instanceof UserCanceledException) {
+          promise.reject("USER_CANCELLATION", "The user cancelled");
+        } else {
+          promise.reject(exception.getMessage(), exception.getMessage());
         }
       }
     });
-
-    PayPalRequest request = new PayPalRequest().billingAgreementDescription("Your agreement description");
-    PayPal.requestBillingAgreement(mBraintreeFragment, request);
+    dropInClient.launchDropIn(dropInRequest);
   }
 
   @ReactMethod
-  public void tokenize(String authorization, final ReadableMap parameters, final Promise promise) {
-    setup(authorization, promise);
+  public void fetchMostRecentPaymentMethod(final String clientToken, final Promise promise) {
+    FragmentActivity currentActivity = (FragmentActivity) getCurrentActivity();
 
-    CardBuilder cardBuilder = new CardBuilder().validate(true);
+    if (currentActivity == null) {
+      promise.reject("NO_ACTIVITY", "There is no current activity");
+      return;
+    }
 
-    if (parameters.hasKey("number"))
-      cardBuilder.cardNumber(parameters.getString("number"));
+    if (dropInClient == null) {
+      promise.reject(
+        "DROP_IN_CLIENT_UNINITIALIZED",
+        "Did you forget to call RNBraintreeDropInModule.initDropInClient(this) in MainActivity.onCreate?"
+      );
+      return;
+    }
 
-    if (parameters.hasKey("cvv"))
-      cardBuilder.cvv(parameters.getString("cvv"));
+    RNBraintreeDropInModule.clientToken = clientToken;
 
-    // In order to keep compatibility with iOS implementation, do not accept
-    // expirationMonth and expirationYear,
-    // accept rather expirationDate (which is combination of
-    // expirationMonth/expirationYear)
-    if (parameters.hasKey("expirationDate"))
-      cardBuilder.expirationDate(parameters.getString("expirationDate"));
-
-    if (parameters.hasKey("expirationYear"))
-      cardBuilder.expirationYear(parameters.getString("expirationYear"));
-
-    if (parameters.hasKey("expirationMonth"))
-      cardBuilder.expirationMonth(parameters.getString("expirationMonth"));
-
-    if (parameters.hasKey("cardholderName"))
-      cardBuilder.cardholderName(parameters.getString("cardholderName"));
-
-    if (parameters.hasKey("firstName"))
-      cardBuilder.firstName(parameters.getString("firstName"));
-
-    if (parameters.hasKey("lastName"))
-      cardBuilder.lastName(parameters.getString("lastName"));
-
-    if (parameters.hasKey("company"))
-      cardBuilder.company(parameters.getString("company"));
-
-    if (parameters.hasKey("locality"))
-      cardBuilder.locality(parameters.getString("locality"));
-
-    if (parameters.hasKey("postalCode"))
-      cardBuilder.postalCode(parameters.getString("postalCode"));
-
-    if (parameters.hasKey("region"))
-      cardBuilder.region(parameters.getString("region"));
-
-    if (parameters.hasKey("streetAddress"))
-      cardBuilder.streetAddress(parameters.getString("streetAddress"));
-
-    if (parameters.hasKey("extendedAddress"))
-      cardBuilder.extendedAddress(parameters.getString("extendedAddress"));
-
-    if (parameters.hasKey("merchantAccountId"))
-      cardBuilder.merchantAccountId(parameters.getString("merchantAccountId"));
-
-    if (parameters.hasKey("countryCode"))
-      cardBuilder.countryCode(parameters.getString("countryCode"));
-
-    Card.tokenize(this.mBraintreeFragment, cardBuilder);
-  }
-
-
-  private void createNewFragmentInstance() {
-    try {
-      AppCompatActivity currentActivity = (AppCompatActivity) getCurrentActivity();
-      if (currentActivity == null) {
-        mPromise.reject("NO_ACTIVITY", "There is no current activity");
-        return;
+    dropInClient.fetchMostRecentPaymentMethod(currentActivity, (dropInResult, error) -> {
+      if (error != null) {
+        promise.reject(error.getMessage(), error.getMessage());
+      } else if (dropInResult == null) {
+        promise.reject("NO_DROP_IN_RESULT", "dropInResult is null");
+      } else {
+        resolvePayment(dropInResult, promise);
       }
-      this.mBraintreeFragment = BraintreeFragment.newInstance(currentActivity, this.token);
-      this.mBraintreeFragment.addListener(new BraintreeCancelListener() {
-        @Override
-        public void onCancel(int requestCode) {
-          mPromise.reject("USER_CANCELLATION", "The process was cancelled by the user");
-        }
-      });
-      this.mBraintreeFragment.addListener(new PaymentMethodNonceCreatedListener() {
-        @Override
-        public void onPaymentMethodNonceCreated(PaymentMethodNonce paymentMethodNonce) {
+    });
+  }
 
-          if (paymentMethodNonce instanceof PayPalAccountNonce) {
-            resolvePaypal(paymentMethodNonce);
-          } else if (paymentMethodNonce instanceof CardNonce) {
-            resolveCard(paymentMethodNonce);
-          }
-        }
-      });
-
-    } catch (Exception e) {
-      mPromise.reject("ERROR", e.getMessage());
-      e.printStackTrace();
+  @ReactMethod
+  public void tokenizeCard(final String clientToken, final ReadableMap cardInfo, final Promise promise) {
+    if (clientToken == null) {
+      promise.reject("NO_CLIENT_TOKEN", "You must provide a client token");
+      return;
     }
-  }
 
-  private void setToken(String token) {
-    this.token = token;
-  }
-
-  private void setup(final String token, Promise promise) {
-    try {
-      this.setToken(token);
-      this.mPromise = promise;
-      createNewFragmentInstance();
-      this.mBraintreeFragment.addListener(new BraintreeErrorListener() {
-        @Override
-        public void onError(Exception error) {
-          if (error instanceof ErrorWithResponse) {
-            ErrorWithResponse errorWithResponse = (ErrorWithResponse) error;
-            BraintreeError cardErrors = errorWithResponse.errorFor("creditCard");
-            if (cardErrors != null) {
-              WritableMap errors = Arguments.createMap();
-              BraintreeError numberError = cardErrors.errorFor("number");
-              BraintreeError cvvError = cardErrors.errorFor("cvv");
-              BraintreeError expirationDateError = cardErrors.errorFor("expirationDate");
-              BraintreeError postalCode = cardErrors.errorFor("postalCode");
-
-              if (numberError != null) {
-                errors.putString("number", numberError.getMessage());
-              }
-
-              if (cvvError != null) {
-                errors.putString("cvv", cvvError.getMessage());
-              }
-
-              if (expirationDateError != null) {
-                errors.putString("expirationMonth", expirationDateError.getMessage());
-              }
-
-              if (postalCode != null) {
-                errors.putString("postalCode", postalCode.getMessage());
-              }
-
-              mPromise.reject("0", errors);
-            } else {
-              mPromise.reject("0", errorWithResponse.getErrorResponse());
-            }
-          }
-        }
-      });
-    } catch (Exception e) {
-      promise.reject("0", e.getMessage());
+    if (
+      !cardInfo.hasKey("number") ||
+      !cardInfo.hasKey("expirationMonth") ||
+      !cardInfo.hasKey("expirationYear") ||
+      !cardInfo.hasKey("cvv") ||
+      !cardInfo.hasKey("postalCode")
+    ) {
+      promise.reject("INVALID_CARD_INFO", "Invalid card info");
+      return;
     }
+
+    Activity currentActivity = getCurrentActivity();
+
+    if (currentActivity == null) {
+      promise.reject("NO_ACTIVITY", "There is no current activity");
+      return;
+    }
+
+    BraintreeClient braintreeClient = new BraintreeClient(getCurrentActivity(), clientToken);
+    CardClient cardClient = new CardClient(braintreeClient);
+
+    Card card = new Card();
+    card.setNumber(cardInfo.getString("number"));
+    card.setExpirationMonth(cardInfo.getString("expirationMonth"));
+    card.setExpirationYear(cardInfo.getString("expirationYear"));
+    card.setCvv(cardInfo.getString("cvv"));
+    card.setPostalCode(cardInfo.getString("postalCode"));
+
+    cardClient.tokenize(card, (cardNonce, error) -> {
+      if (error != null) {
+        promise.reject(error.getMessage(), error.getMessage());
+      } else if (cardNonce == null) {
+        promise.reject("NO_CARD_NONCE", "Card nonce is null");
+      } else {
+        promise.resolve(cardNonce.getString());
+      }
+    });
   }
 
-  private void resolvePaypal(PaymentMethodNonce paymentMethodNonce) {
+  private void resolvePayment(DropInResult dropInResult, Promise promise) {
+    String deviceData = dropInResult.getDeviceData();
+    PaymentMethodNonce paymentMethodNonce = dropInResult.getPaymentMethodNonce();
+
     WritableMap jsResult = Arguments.createMap();
 
     if (paymentMethodNonce == null) {
@@ -233,37 +252,12 @@ public class RNBraintreeDropInModule extends ReactContextBaseJavaModule {
     jsResult.putString("type", currentActivity.getString(dropInPaymentMethod.getLocalizedName()));
     jsResult.putString("description", dropInResult.getPaymentDescription());
     jsResult.putBoolean("isDefault", paymentMethodNonce.isDefault());
+    jsResult.putString("deviceData", deviceData);
 
     promise.resolve(jsResult);
   }
 
-  private void resolveCard (PaymentMethodNonce paymentMethodNonce) {
-    WritableMap jsResult = Arguments.createMap();
-    final Map<String, String> data = new HashMap<>();
-    if (threeDSecureOptions != null && paymentMethodNonce instanceof CardNonce) {
-      CardNonce cardNonce = (CardNonce) paymentMethodNonce;
-      if (!cardNonce.getThreeDSecureInfo().isLiabilityShiftPossible()) {
-        mPromise.reject("2", "3DSECURE_NOT_ABLE_TO_SHIFT_LIABILITY");
-      } else if (!cardNonce.getThreeDSecureInfo().isLiabilityShifted()) {
-        mPromise.reject("2", "3DSECURE_LIABILITY_NOT_SHIFTED");
-      } else {
-          jsResult.putString("nonce", paymentMethodNonce.getNonce());
-          jsResult.putString("type", paymentMethodNonce.getTypeLabel());
-          jsResult.putString("description", paymentMethodNonce.getDescription());
-          jsResult.putBoolean("isDefault", paymentMethodNonce.isDefault());
-          mPromise.resolve(jsResult);
-      }
-    } else {
-      jsResult.putString("nonce", paymentMethodNonce.getNonce());
-      jsResult.putString("type", paymentMethodNonce.getTypeLabel());
-      jsResult.putString("description", paymentMethodNonce.getDescription());
-      jsResult.putBoolean("isDefault", paymentMethodNonce.isDefault());
-      mPromise.resolve(jsResult);
-    }
-  }
-
-
-
+  @NonNull
   @Override
   public String getName() {
     return "RNBraintreeDropIn";
