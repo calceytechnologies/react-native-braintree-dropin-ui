@@ -43,15 +43,31 @@ RCT_EXPORT_METHOD(paypalLogin:(NSDictionary*)options resolver:(RCTPromiseResolve
     
     
     BTAPIClient *apiClient = [[BTAPIClient alloc] initWithAuthorization:clientToken];
+    
     self.dataCollector = [[BTDataCollector alloc] initWithAPIClient:apiClient];
+    [self.dataCollector collectDeviceData:^(NSString * _Nonnull deviceDataCollector) {
+        // Save deviceData
+        self.deviceDataCollector = deviceDataCollector;
+    }];
     
     self.braintreeClient = apiClient;
     BTPayPalDriver *payPalDriver = [[BTPayPalDriver alloc] initWithAPIClient:self.braintreeClient];
 //    payPalDriver.appSwitchDelegate = self; // Optional
     
-    BTPayPalRequest *checkout = [[BTPayPalRequest alloc] init];
+    BTPayPalVaultRequest *checkout = [[BTPayPalVaultRequest alloc] init];
     checkout.billingAgreementDescription = @"Your agreement description";
+    [payPalDriver requestBillingAgreement:checkout completion:^(BTPayPalAccountNonce * _Nullable tokenizedPayPalCheckout, NSError * _Nullable error) {
+        if (error) {
+            NSLog(@"payPalLogs : %@", error.localizedDescription);
+            reject(error.localizedDescription, error.localizedDescription, error);
+        } else if (tokenizedPayPalCheckout) {
+            [[self class] resolvePayPalLogin:tokenizedPayPalCheckout deviceData:self.deviceDataCollector resolver:resolve];
+        } else {
+            reject(@"USER_CANCELLATION", @"The process was cancelled by the user", nil);
+        }
+    }];
 }
+
 
 + (void)resolvePayPalLogin:(BTPayPalAccountNonce* _Nullable)tokenizedPayPalCheckout deviceData:(NSString * _Nonnull)deviceDataCollector resolver:(RCTPromiseResolveBlock _Nonnull)resolve {
     NSMutableDictionary* result = [NSMutableDictionary new];
