@@ -213,6 +213,7 @@ public class RNBraintreeDropInModule extends ReactContextBaseJavaModule {
     card.setExpirationYear(cardInfo.getString("expirationYear"));
     card.setCvv(cardInfo.getString("cvv"));
     card.setPostalCode(cardInfo.getString("postalCode"));
+    card.setCountryCode(cardInfo.getString("countryCode"));
 
     cardClient.tokenize(card, (cardNonce, error) -> {
       if (error != null) {

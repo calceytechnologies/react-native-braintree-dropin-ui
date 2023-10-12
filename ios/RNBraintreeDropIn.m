@@ -241,6 +241,7 @@ RCT_EXPORT_METHOD(tokenizeCard:(NSString*)clientToken
     NSString *expirationYear = cardInfo[@"expirationYear"];
     NSString *cvv = cardInfo[@"cvv"];
     NSString *postalCode = cardInfo[@"postalCode"];
+    NSString *countryCode = cardInfo[@"countryCode"];
 
     if (!number || !expirationMonth || !expirationYear || !cvv || !postalCode) {
         reject(@"INVALID_CARD_INFO", @"Invalid card info", nil);
@@ -255,6 +256,7 @@ RCT_EXPORT_METHOD(tokenizeCard:(NSString*)clientToken
     card.expirationYear = expirationYear;
     card.cvv = cvv;
     card.postalCode = postalCode;
+    card.countryCodeAlpha3 = countryCode;
 
     [cardClient tokenizeCard:card
                   completion:^(BTCardNonce *tokenizedCard, NSError *error) {
